@@ -3,8 +3,9 @@ from dash import html, dcc, dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 from sqlalchemy import create_engine
+from config import Config
 from sqlalchemy.orm import scoped_session, sessionmaker
-from database.functions import buy_stock,sell_stock,register_dividend,get_portfolio_stocks,get_stock_dividends,get_stock_transactions
+from database.functions import buy_stock,sell_stock,register_dividend,get_portfolio_stocks,get_stock_dividends,get_stock_transactions, init_and_populate_db
 from datetime import datetime
 from database.models import Users, Portfolios,Stocks ,db
 
@@ -14,11 +15,14 @@ from database.models import Users, Portfolios,Stocks ,db
 # engine = create_engine(DATABASE_URI)
 # db_session = scoped_session(sessionmaker(bind=engine))
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],suppress_callback_exceptions=True)
-app.server.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:pass@localhost/alpha'
-app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SLATE],suppress_callback_exceptions=True)
+with app.server.app_context():
+    app.server.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///alpha.db'
+    db.init_app(app.server)
 
-db.init_app(app.server)
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# db.init_app(app.server)
 
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
@@ -27,31 +31,137 @@ app.layout = html.Div([
 
 ])
 
-
 page_1_layout = dbc.Container([
-    dbc.Row([
+    dbc.Row(
         dbc.Col(
-            dbc.Form([
-                dbc.FormGroup([
-                    dbc.Label("Username:", className="mr-2"),
-                    dbc.Input(id="username", type="text", placeholder="Enter username")
-                ], className="mr-3"),
-                dbc.FormGroup([
-                    dbc.Label("Portfolio Name:", className="mr-2"),
-                    dbc.Input(id="portfolio", type="text", placeholder="Enter portfolio name")
-                ], className="mr-3"),
-                dbc.Button("Submit", id="submit-button", color="primary")
-            ], inline=True),
-            className="my-4"
+            [
+                dbc.Jumbotron(
+                    [
+                        dbc.Container(
+                            [
+                                html.H1("Stock Portfolio Manager", className="display-4 text-center mb-4"),
+                                html.P(
+                                    "Enter your personal and portfolio information:",
+                                    className="lead text-center mb-4"
+                                ),
+                                dbc.Form(
+                                    [
+                                        dbc.FormGroup(
+                                            [
+                                                dbc.Label("Username", className="mr-2"),
+                                                dbc.Input(
+                                                    id="username",
+                                                    type="text",
+                                                    placeholder="Enter username"
+                                                )
+                                            ],
+                                            row=True,
+                                        ),
+                                        dbc.FormGroup(
+                                            [
+                                                dbc.Label("First Name", className="mr-2"),
+                                                dbc.Input(
+                                                    id="first",
+                                                    type="text",
+                                                    placeholder="Enter first name"
+                                                )
+                                            ],
+                                            row=True,
+                                        ),
+                                        dbc.FormGroup(
+                                            [
+                                                dbc.Label("Last Name", className="mr-2"),
+                                                dbc.Input(
+                                                    id="last",
+                                                    type="text",
+                                                    placeholder="Enter last name"
+                                                )
+                                            ],
+                                            row=True,
+                                        ),
+                                        dbc.FormGroup(
+                                            [
+                                                dbc.Label("Email", className="mr-2"),
+                                                dbc.Input(
+                                                    id="email",
+                                                    type="email",
+                                                    placeholder="Enter email"
+                                                )
+                                            ],
+                                            row=True,
+                                        ),
+                                        dbc.FormGroup(
+                                            [
+                                                dbc.Label("Portfolio Name", className="mr-2"),
+                                                dbc.Input(
+                                                    id="portfolio",
+                                                    type="text",
+                                                    placeholder="Enter portfolio name"
+                                                )
+                                            ],
+                                            row=True,
+                                        ),
+                                        dbc.FormGroup(
+                                            [
+                                                dbc.Label("Portfolio Type", className="mr-2"),
+                                                dbc.Input(
+                                                    id="type",
+                                                    type="text",
+                                                    placeholder="type"
+                                                )
+                                            ],
+                                            row=True,
+                                        ),
+                                        dbc.FormGroup(
+                                            [
+                                                dbc.Label("Market", className="mr-2"),
+                                                dbc.Input(
+                                                    id="market",
+                                                    type="text",
+                                                    placeholder="market"
+                                                )
+                                            ],
+                                            row=True,
+                                        ),
+                                        dbc.FormGroup(
+                                            [
+                                                dbc.Label("Portfolio Currency", className="mr-2"),
+                                                dbc.Input(
+                                                    id="currency",
+                                                    type="text",
+                                                    placeholder="currency"
+                                                )
+                                            ],
+                                            row=True,
+                                        ),
+                                        dbc.Button(
+                                            "Submit",
+                                            id="submit-button",
+                                            color="primary",
+                                            className="mt-3",
+                                        ),
+                                    ],
+                                ),
+                            ],
+                            fluid=True,
+                        )
+                    ]
+                )
+            ],
+            width={"size": 10, "offset": 1},
         )
-    ]),
-    dbc.Row([
+    ),
+    dbc.Row(
         dbc.Col(
-            dbc.Alert("Error: Username or Portfolio not found.", id="error-alert", color="danger", is_open=False),
-            # width=12
+            dbc.Alert(
+                "Error: Username or Portfolio not found.",
+                id="error-alert",
+                color="danger",
+                is_open=False,
+            ),
+            width=12,
         )
-    ]),
-    # dbc.Row(id="transactions-row", style={"display": "none"}),
+    ),
 ], fluid=True)
 
 
@@ -163,29 +273,41 @@ def display_page(pathname):
     else:
         return page_1_layout
 
+
 @app.callback(
     Output("error-alert", "is_open"),
-    # Output("transactions-row", "style"),
     Output('store', 'data'),
     Output('url', 'pathname'),
-    Input("submit-button", "n_clicks"),
     State("username", "value"),
-    State("portfolio", "value")
+    State("first", "value"),
+    State("last", "value"),
+    State("email", "value"),
+    State("portfolio", "value"),
+    State("type", "value"),
+    State("market", "value"),
+    State("currency", "value"),
+    Input("submit-button", "n_clicks"),
 )
-def handle_submit(n_clicks, username, portfolio):
-    
-    if n_clicks is not None and n_clicks > 0:
-        
+def handle_submit(n_clicks, username, first, last, email, portfolio, type, market, currency):
+    if n_clicks is not None:
         with app.server.app_context():
+            init_and_populate_db(username, first, last, email, portfolio, type, market, currency)
             user = Users.query.filter_by(username=username).first()
             if user:
                 user_portfolio = Portfolios.query.filter_by(user_id=user.id, name=portfolio).first()
                 if user_portfolio:
-                    return False, {'username': username, 'portfolio': portfolio, 'portfolio_id' : user_portfolio.id} ,'/transactions'
-        
-            return True, None, None
-    
-    return False, None ,None
+                    return False, {'username': username, 'portfolio': portfolio, 'portfolio_id': user_portfolio.id}, '/transactions'
+            else:
+                user = Users.query.filter_by(username=username).first()
+                if user:
+                    user_portfolio = Portfolios.query.filter_by(user_id=user.id, name=portfolio).first()
+                    if user_portfolio:
+                        return False, {'username': username, 'portfolio': portfolio, 'portfolio_id': user_portfolio.id}, '/transactions'
+
+        return True, None, None
+
+    return False, None, None
+
 
 # Callback for the buy stock form
 @app.callback(
@@ -381,9 +503,9 @@ def update_stock_details(store_data):
         return stock_details, summary_children
 
 
-@app.server.teardown_request
-def teardown_request(exception=None):
-    db.session.remove()
+# @app.server.teardown_request
+# def teardown_request(exception=None):
+#     db.session.remove()
 
 if __name__ == "__main__":
     app.run_server(debug=True)
