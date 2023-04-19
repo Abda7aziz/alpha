@@ -63,3 +63,19 @@ def sell_stock(ticker_symbol, shares, price, portfolio_id):
     else:
         # Handle the case where the user tries to sell more shares than they have
         pass
+    
+# Get transactions for a stock
+def get_stock_transactions(stock_id):
+    transactions = Transactions.query.filter_by(stock_id=stock_id).all()
+    return transactions
+
+# Get dividends for a stock
+def get_stock_dividends(stock_id):
+    dividends = Dividends.query.filter_by(stock_id=stock_id).all()
+    return dividends
+
+# Get stocks for a portfolio
+def get_portfolio_stocks(portfolio_id):
+    stocks = Stocks.query.filter_by(portfolio_id=portfolio_id).all()
+    return stocks
+

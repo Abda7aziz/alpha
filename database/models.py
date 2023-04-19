@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-
+import datetime
 db = SQLAlchemy()
 
 class Users(db.Model):
@@ -30,6 +30,7 @@ class Stocks(db.Model):
 
 class Transactions(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    created_datetime = db.Column(db.DateTime,default=datetime.datetime.utcnow ,nullable=False)
     type = db.Column(db.String(255), nullable=False)
     price = db.Column(db.Numeric(10, 2), nullable=False)
     shares = db.Column(db.Integer, nullable=False)
