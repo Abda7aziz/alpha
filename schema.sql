@@ -28,7 +28,7 @@ CREATE TABLE Stocks (
 
 CREATE TABLE Transactions (
   id          SERIAL PRIMARY KEY,
-  creted_datetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_datetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   type        VARCHAR(255) NOT NULL,
   price       DECIMAL(10, 2) NOT NULL,
   shares      INTEGER NOT NULL,
