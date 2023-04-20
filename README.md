@@ -4,7 +4,6 @@ This application allows you to manage your stock portfolio by tracking transacti
 
 ## Prerequisites
 
-- Docker installed on your system ([Download Docker](https://www.docker.com/products/docker-desktop))
 - Python 3.6 or higher installed on your system
 
 ## Setting up the project
@@ -40,23 +39,8 @@ D. Reload your shell configuration:
 source ~/.bash_profile
   ```
 
-2. **Build and run Dockerfile**
 
-   Navigate to the project directory and build the Dockerfile by running the following command:
-  ```
-docker build -t portfolio-management .
-  ```
-
-
-Once the build is complete, run the Docker container with the following command:
-  ```
-docker run -d -p 5432:5432 --name portfolio-management-db portfolio-management
-  ```
-
-
-This will start the PostgreSQL database inside a Docker container.
-
-3. **Create a Python virtual environment**
+2. **Create a Python virtual environment**
 
 In the project directory, create a new Python virtual environment by running the following command:
 
@@ -75,7 +59,7 @@ Activate the virtual environment:
   venv\Scripts\activate
   ```
 
-4. **Upgrade pip and install the required packages**
+3. **Upgrade pip and install the required packages**
 
 Upgrade pip by running the following command:
 
@@ -93,7 +77,6 @@ The application consists of several components:
 - `database/`: This directory contains the database configuration, models, and utility functions.
 - `models.py`: Defines the database models for users, portfolios, stocks, transactions, dividends, and cash.
 - `functions.py`: Contains the functions to perform operations like buying and selling stocks, registering dividends, and adding cash to the portfolio.
-- `Dockerfile`: A Dockerfile to build a PostgreSQL database container for the application.
 - `schema.sql`: A Schema DDL to create the schema upon creating the database.
 - `README.md`: This guide on setting up and understanding the application.
 

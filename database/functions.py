@@ -11,6 +11,8 @@ def init_and_populate_db(username, first, last, email, portfolio, type, market, 
 	portfolio = Portfolios(name=portfolio, type=type, market=market, currency=currency, user_id=user.id)
 	db.session.add(portfolio)
 	db.session.commit()
+ 
+	return user.username,portfolio.name, portfolio.id
 
 
 
