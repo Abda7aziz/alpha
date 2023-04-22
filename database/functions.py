@@ -1,6 +1,5 @@
 from database.models import db, Users, Portfolios, Stocks, Transactions, Dividends, Cash
 import pandas as pd
-import xlsxwriter
 
 def init_and_populate_db(username, first, last, email, portfolio, type, market, currency):
 
