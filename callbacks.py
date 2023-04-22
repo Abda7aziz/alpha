@@ -1,9 +1,18 @@
-from database.functions import buy_stock,sell_stock,register_dividend,get_portfolio_stocks,get_stock_dividends,get_stock_transactions, init_and_populate_db
-from database.models import Users, Portfolios,Stocks
+from database.functions import buy_stock,sell_stock,register_dividend,get_portfolio_stocks,get_stock_dividends,get_stock_transactions, init_and_populate_db,export_transactions_and_delete_db
+from layouts import tab_upload_layout, tab_manual_layout
+from database.models import Stocks
 from dash.dependencies import Input, Output, State
+from flask import send_file
 import dash_bootstrap_components as dbc
 from datetime import datetime
+from dash import dcc
+import pandas as pd
+import layouts
+import base64
+import json
+import time
 import dash
+import io
 
 from app import app
 
@@ -26,12 +35,20 @@ def handle_submit(n_clicks, username, first, last, email, portfolio, type, marke
     if n_clicks is not None:
         with app.server.app_context():
             username,portfolio,portfolio_id = init_and_populate_db(username, first, last, email, portfolio, type, market, currency)
-            return False, {'username': username, 'portfolio': portfolio, 'portfolio_id': portfolio.id}, '/transactions'
+            return False, {'username': username, 'portfolio': portfolio, 'portfolio_id': portfolio_id}, '/transactions'
     return False, None, '/'
+
+@app.callback(Output('tab-content', 'children'),
+              Input('tabs', 'active_tab'))
+def render_tab_content(active_tab):
+    if active_tab == 'tab-upload':
+        return tab_upload_layout
+    elif active_tab == 'tab-manual':
+        return tab_manual_layout
 
 
 # Callback for the buy stock form
-@app.callback(
+@app.callback(Output('page-content', 'children',allow_duplicate=True),
     Output('buy-ticker-symbol', 'value'),
     Output('buy-name', 'value'),
     Output('buy-shares', 'value'),
@@ -41,7 +58,8 @@ def handle_submit(n_clicks, username, first, last, email, portfolio, type, marke
     State('buy-name', 'value'),
     State('buy-shares', 'value'),
     State('buy-price', 'value'),
-    State('store', 'data')
+    State('store', 'data'),
+    prevent_initial_call='True'
 )
 def handle_buy_stock(n_clicks, ticker_symbol, name, shares, price, store_data):
     if n_clicks is not None and n_clicks > 0:
@@ -50,12 +68,12 @@ def handle_buy_stock(n_clicks, ticker_symbol, name, shares, price, store_data):
             username,portfolio_id = store_data['username'],store_data['portfolio_id']
             if username:
                 buy_stock(ticker_symbol, name, shares, price, portfolio_id)
-            return '', '', '', ''
-    return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return layouts.page_2_layout,'', '', '', ''
+    return dash.no_update,dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
 
 # Callback for the sell stock form
-@app.callback(
+@app.callback(Output('page-content', 'children',allow_duplicate=True),
     Output('sell-ticker-symbol', 'value'),
     Output('sell-shares', 'value'),
     Output('sell-price', 'value'),
@@ -63,7 +81,8 @@ def handle_buy_stock(n_clicks, ticker_symbol, name, shares, price, store_data):
     State('sell-ticker-symbol', 'value'),
     State('sell-shares', 'value'),
     State('sell-price', 'value'),
-    State('store', 'data')
+    State('store', 'data'),
+    prevent_initial_call='True'
 )
 def handle_sell_stock(n_clicks, ticker_symbol, shares, price, store_data):
     if n_clicks is not None and n_clicks > 0:
@@ -72,12 +91,12 @@ def handle_sell_stock(n_clicks, ticker_symbol, shares, price, store_data):
             username,portfolio_id = store_data['username'],store_data['portfolio_id']
             if username:
                 sell_stock(ticker_symbol, shares, price, portfolio_id)
-            return '', '', ''
-    return dash.no_update, dash.no_update, dash.no_update
+            return layouts.page_2_layout,'', '', ''
+    return dash.no_update,dash.no_update, dash.no_update, dash.no_update
 
 
 # Callback for the add dividends form
-@app.callback(
+@app.callback(Output('page-content', 'children',allow_duplicate=True),
     Output('div-ticker-symbol', 'value'),
     Output('div-amount', 'value'),
     Output('div-ex-date', 'value'),
@@ -86,7 +105,8 @@ def handle_sell_stock(n_clicks, ticker_symbol, shares, price, store_data):
     State('div-ticker-symbol', 'value'),
     State('div-amount', 'value'),
     State('div-ex-date', 'value'),
-    State('div-payment-date', 'value')
+    State('div-payment-date', 'value'),
+    prevent_initial_call='True'
 )
 def handle_add_dividends(n_clicks, ticker_symbol, amount, ex_dividend_date, payment_date):
     if n_clicks is not None and n_clicks > 0:
@@ -95,8 +115,58 @@ def handle_add_dividends(n_clicks, ticker_symbol, amount, ex_dividend_date, paym
             ex_dividend_date = datetime.strptime(ex_dividend_date, '%Y-%m-%d').date()
             payment_date = datetime.strptime(payment_date, '%Y-%m-%d').date()
             register_dividend(stock.id, amount, ex_dividend_date, payment_date)
-            return '', '', '', ''
-    return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return layouts.page_2_layout,'', '', '', ''
+    return dash.no_update,dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+###########################
+###########################
+####### Upload File #######
+###########################
+###########################
+
+@app.callback(Output('page-content', 'children',allow_duplicate=True),
+              Output('output-upload-file', 'children'),
+              Input('upload-file', 'contents'),
+              State('upload-file', 'filename'),
+              State('store','data'),
+                  prevent_initial_call=True)
+def handle_file_upload(contents, filename,data):
+    if contents is not None:
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+
+        if filename.endswith('.csv'):
+            df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+        elif filename.endswith('.xlsx'):
+            df_t = pd.read_excel(io.BytesIO(decoded),sheet_name='Transactions')
+            df_d = pd.read_excel(io.BytesIO(decoded),sheet_name='Dividends')
+
+        # Replace 'stock_id' column with 'ticker_symbol' and 'stock_name'
+        # df = df.rename(columns={'stock_id': 'ticker_symbol'})
+
+        # Here, you can process the DataFrame 'df' and insert the transactions into the database
+        with app.server.app_context():
+            portfolio_id = data['portfolio_id']
+            print(df_t)
+            for c,row in df_t.iterrows():
+                if row['type'] == 'buy':
+                    transaction = buy_stock(row['ticker_symbol'],row['name'],row['shares'],row['price'],portfolio_id)
+                    print(transaction)
+                else:
+                    print(row['ticker_symbol'])
+                    sell_stock(row['ticker_symbol'],row['shares'],row['price'],portfolio_id)
+            for c,row in df_d.iterrows():    
+                register_dividend(transaction.stock.id,row['amount'],row['ex_dividend_date'],row['payment_date'])
+
+        # table = dash_table.DataTable(
+        #     data=df.to_dict('records'),
+        #     columns=[{'name': i, 'id': i} for i in df.columns],
+        #     style_table={'overflowX': 'auto'})
+        # ]
+        print(filename)
+        return layouts.page_2_layout,f'File "{filename}" uploaded and processed successfully.'
+    else:
+        return dash.no_update,dash.no_update
 
 
 # Callback for updating stock details table and transactions summary
@@ -223,9 +293,32 @@ def update_stock_details(store_data):
         return stock_details, summary_children
 
 
-# @app.server.teardown_request
-# def teardown_request(exception=None):
-#     db.session.remove()
+@app.callback(
+    Output("download", "data"),
+    Input("export-delete-button", "n_clicks"),
+    State("store", "data"),
+)
+def on_export_delete_button_click(n_clicks, store_data):
+    print(n_clicks)
+    if n_clicks is not None:
+        print('clicked')
+        portfolio_id = store_data["portfolio_id"]
+        transactions_df, dividends_df = export_transactions_and_delete_db(portfolio_id)
+        
+        df = pd.DataFrame()
+        # excel_filename = "stocks_data.xlsx"
+        excel_file = io.BytesIO()
+        with pd.ExcelWriter(excel_file) as writer:
+            transactions_df.to_excel(writer, sheet_name="Transactions", index=False)
+            dividends_df.to_excel(writer, sheet_name="Dividends", index=False)
+        
+        # Return the file as a base64-encoded string
+        return dict(content=base64.b64encode(excel_file.read()).decode(), 
+                    filename='stocks_data.xlsx')
+        
+        # return send_file(response["content"], response["filename"])
+        # return dcc.send_file(excel_filename, "my_stocks.xlsx")
+    return None
 
 if __name__ == "__main__":
     app.run_server(debug=True)

@@ -1,4 +1,6 @@
 from database.models import db, Users, Portfolios, Stocks, Transactions, Dividends, Cash
+import pandas as pd
+import xlsxwriter
 
 def init_and_populate_db(username, first, last, email, portfolio, type, market, currency):
 
@@ -13,9 +15,6 @@ def init_and_populate_db(username, first, last, email, portfolio, type, market, 
 	db.session.commit()
  
 	return user.username,portfolio.name, portfolio.id
-
-
-
 
 def add_cash(portfolio_id, amount, currency):
 	cash = Cash(portfolio_id=portfolio_id, amount=amount, currency=currency)
@@ -48,35 +47,36 @@ def buy_stock(ticker_symbol, name, shares, price, portfolio_id):
 	# If the stock doesn't exist, create it
 	if stock is None:
 		stock = Stocks(ticker_symbol=ticker_symbol, name=name, shares=0, portfolio_id=portfolio_id)
-		db.session.add(stock)
-		db.session.commit()
+	db.session.add(stock)
+	db.session.commit()
 
-		# Update the stock's shares
-		stock.shares += shares
-		db.session.commit()
+	# Update the stock's shares
+	stock.shares += shares
+	db.session.commit()
 
-		# Create a new transaction
-		transaction = Transactions(type='buy', price=price, shares=shares, stock_id=stock.id)
-		db.session.add(transaction)
-		db.session.commit()
+	# Create a new transaction
+	transaction = Transactions(type='buy', price=price, shares=shares, stock_id=stock.id)
+	db.session.add(transaction)
+	db.session.commit()
 
+  
 		# Update the portfolio's cash
 		# portfolio = Portfolios.query.get(portfolio_id)
 		# portfolio_cash = portfolio.cash
 		# portfolio_cash -= price * shares
 		# db.session.commit()
+	return transaction
 
 def sell_stock(ticker_symbol, shares, price, portfolio_id):
 	stock = Stocks.query.filter_by(ticker_symbol=ticker_symbol, portfolio_id=portfolio_id).first()
-
+	print('Hi\n',stock,' What?')
 	if stock and stock.shares >= shares:
 		stock.shares -= shares
-	if stock.shares == 0:
-		db.session.delete(stock)
-
 		transaction = Transactions(type='sell', price=price, shares=shares, stock_id=stock.id)
 		db.session.add(transaction)
 		db.session.commit()
+	elif stock.shares == 0:
+		db.session.delete(stock)
 	else:
 		# Handle the case where the user tries to sell more shares than they have
 		pass
@@ -96,3 +96,38 @@ def get_portfolio_stocks(portfolio_id):
 	stocks = Stocks.query.filter_by(portfolio_id=portfolio_id).all()
 	return stocks
 
+def export_transactions_and_delete_db(portfolio_id):
+    # Get stocks for the portfolio
+    stocks = get_portfolio_stocks(portfolio_id)
+
+    # Create a DataFrame for transactions
+    transactions_data = []
+    for stock in stocks:
+        transactions = get_stock_transactions(stock.id)
+        for transaction in transactions:
+            transactions_data.append({
+                "created_datetime": transaction.created_datetime,
+                "ticker_symbol": stock.ticker_symbol,
+                "name": stock.name,
+                "type": transaction.type,
+                "shares": transaction.shares,
+                "price": transaction.price,
+            })
+    transactions_df = pd.DataFrame(transactions_data)
+
+    # Create a DataFrame for dividends
+    dividends_data = []
+    for stock in stocks:
+        dividends = get_stock_dividends(stock.id)
+        for dividend in dividends:
+            dividends_data.append({
+                "ticker_symbol": stock.ticker_symbol,
+                "amount": dividend.amount,
+                "ex_dividend_date": dividend.ex_dividend_date,
+                'payment_date': dividend.payment_date
+            })
+    dividends_df = pd.DataFrame(dividends_data)
+    
+    db.drop_all()
+    db.create_all()
+    return transactions_df,dividends_df

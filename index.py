@@ -7,7 +7,7 @@ import callbacks
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     html.Div(id='page-content'),
-    dcc.Store(id='store', storage_type='session')
+    dcc.Store(id='store', storage_type='local')
 ])
 
 @app.callback(Output('page-content', 'children'),
