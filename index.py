@@ -4,6 +4,8 @@ from app import app
 import layouts
 import callbacks
 
+server = app.server  # create the application instance
+
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     html.Div(id='page-content'),
