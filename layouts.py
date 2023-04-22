@@ -1,6 +1,5 @@
 import dash_bootstrap_components as dbc
 from dash import html, dcc, dash_table
-# from dash_extensions import Download
 
 
 page_1_layout = dbc.Container([

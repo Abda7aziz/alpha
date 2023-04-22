@@ -11,7 +11,6 @@ config==0.5.1
 dash==2.9.3
 dash-bootstrap-components==1.4.1
 dash-core-components==2.0.0
-dash-extensions==0.1.13
 dash-html-components==2.0.0
 dash-table==5.0.0
 debugpy==1.6.7
