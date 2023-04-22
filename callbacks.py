@@ -1,194 +1,54 @@
-import dash
-from dash import html, dcc, dash_table
-import dash_bootstrap_components as dbc
+from database.functions import buy_stock,sell_stock,register_dividend,get_portfolio_stocks,get_stock_dividends,get_stock_transactions, init_and_populate_db,export_transactions_and_delete_db
+from layouts import tab_upload_layout, tab_manual_layout
+from database.models import Stocks
 from dash.dependencies import Input, Output, State
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
-from database.functions import buy_stock,sell_stock,register_dividend,get_portfolio_stocks,get_stock_dividends,get_stock_transactions
+from flask import send_file
+import dash_bootstrap_components as dbc
 from datetime import datetime
-from database.models import Users, Portfolios,Stocks ,db
+from dash import dcc
+import pandas as pd
+import layouts
+import base64
+import json
+import time
+import dash
+import io
 
-# DATABASE_URI = 'postgresql://admin:pass@localhost/tasi'
-# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+from app import app
 
-# engine = create_engine(DATABASE_URI)
-# db_session = scoped_session(sessionmaker(bind=engine))
-
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],suppress_callback_exceptions=True)
-app.server.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:pass@localhost/alpha'
-app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db.init_app(app.server)
-
-app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content'),
-    dcc.Store(id='store', storage_type='session')
-
-])
-
-
-page_1_layout = dbc.Container([
-    dbc.Row([
-        dbc.Col(
-            dbc.Form([
-                dbc.FormGroup([
-                    dbc.Label("Username:", className="mr-2"),
-                    dbc.Input(id="username", type="text", placeholder="Enter username")
-                ], className="mr-3"),
-                dbc.FormGroup([
-                    dbc.Label("Portfolio Name:", className="mr-2"),
-                    dbc.Input(id="portfolio", type="text", placeholder="Enter portfolio name")
-                ], className="mr-3"),
-                dbc.Button("Submit", id="submit-button", color="primary")
-            ], inline=True),
-            className="my-4"
-        )
-    ]),
-    dbc.Row([
-        dbc.Col(
-            dbc.Alert("Error: Username or Portfolio not found.", id="error-alert", color="danger", is_open=False),
-            # width=12
-        )
-    ]),
-    # dbc.Row(id="transactions-row", style={"display": "none"}),
-], fluid=True)
-
-
-page_2_layout = layout2 = html.Div([
-    dbc.Container([
-        dbc.Row([
-            dbc.Col(html.H2('Enter Transactions'), width=12),
-        ]),
-
-        # Buy, sell stock, and dividends forms
-        dbc.Row([
-            dbc.Col(
-                dbc.Form([
-                    # Buy Stock Form
-                    dbc.FormGroup([
-                        dbc.Label('Buy Stock'),
-                        dbc.Input(id='buy-ticker-symbol', type='text', placeholder='Ticker Symbol'),
-                        dbc.Input(id='buy-name', type='text', placeholder='Stock Name'),
-                        dbc.Input(id='buy-shares', type='number', placeholder='Shares', step='any'),
-                        dbc.Input(id='buy-price', type='number', placeholder='Price', step='any'),
-                        dbc.Button('Submit', id='buy-submit-button', color='primary', n_clicks=0)
-                    ])
-                ]),
-                width=6
-            ),   
-            dbc.Col(
-                dbc.Form([
-                    # Sell Stock Form
-                    dbc.FormGroup([
-                        dbc.Label('Sell Stock'),
-                        dbc.Input(id='sell-ticker-symbol', type='text', placeholder='Ticker Symbol'),
-                        dbc.Input(id='sell-shares', type='number', placeholder='Shares', step='any'),
-                        dbc.Input(id='sell-price', type='number', placeholder='Price', step='any'),
-                        dbc.Button('Submit', id='sell-submit-button', color='primary', n_clicks=0)
-                    ])
-                ]),
-                width=6
-            ),
-            dbc.Col(
-                dbc.Form([
-                    # Register Dividends Form
-                    dbc.FormGroup([
-                        dbc.Label('Register Dividends'),
-                        dbc.Input(id='div-ticker-symbol', type='text', placeholder='Ticker Symbol'),
-                        dbc.Input(id='div-amount', type='number', placeholder='Amount', step='any'),
-                        dbc.Input(id='div-ex-date', type='date', placeholder='Ex-Dividend Date'),
-                        dbc.Input(id='div-payment-date', type='date', placeholder='Payment Date'),
-                        dbc.Button('Submit', id='div-submit-button', color='primary', n_clicks=0)
-                    ])
-                ]),
-                width=6
-            ),
-            dbc.Col(
-                dbc.Form([
-                    # Add Cash Form
-                    dbc.FormGroup([
-                        dbc.Label('Add Cash'),
-                        dbc.Input(id='add-portfoilio-name', type='text', placeholder='Portfolio Name', disabled=True),
-                        dbc.Input(id='add-cash-amount', type='number', placeholder='Amount', step='any', disabled=True),
-                        dbc.Input(id='add-cash-currency', type='text', placeholder='Currency',disabled=True),
-                        dbc.Button('Submit', id='add-cash-submit', color='primary', n_clicks=0, disabled=True)
-                    ])
-                ]),
-                width=6
-            )
-        ]),
-        
-        dbc.Row([
-            # Stock Details header
-            dbc.Col(html.H2('Stock Details'), width=12),
-
-            # DataTable for displaying stock details
-            dbc.Col(
-                dash_table.DataTable(
-                    id='stock-details-table',
-                    columns=[
-                        {'name': 'Stock Name', 'id': 'name'},
-                        {'name': 'Ticker Symbol', 'id': 'ticker_symbol'},
-                        {'name': 'Shares', 'id': 'shares'},
-                        {'name': 'Price', 'id': 'price'},
-                        {'name': 'Average', 'id': 'average'},
-                        {'name': 'Buy/Sell Average', 'id': 'buy_sell_average'},
-                        {'name': 'Buy/Sell/Dividends Average', 'id': 'buy_sell__div_average'},
-                        {'name': 'Unrealized Gain/Loss', 'id': 'unrealized'},
-                    ],
-                    data=[],
-                    style_table={'overflowX': 'auto'}
-                ),
-                width=12
-            ),
-        ]),
-
-        dbc.Row([
-            # Transactions Summary header
-            dbc.Col(html.H2('Transactions Summary'), width=12),
-            dbc.Col(html.Div(id='transactions-summary'), width=12),
-        ]),
-    ])
-])
-
-
-###### Callbacks #######
-
-@app.callback(Output('page-content', 'children'),
-              Input('url', 'pathname'))
-def display_page(pathname):
-    if pathname == '/transactions':
-        return page_2_layout
-    else:
-        return page_1_layout
 
 @app.callback(
     Output("error-alert", "is_open"),
-    # Output("transactions-row", "style"),
     Output('store', 'data'),
     Output('url', 'pathname'),
-    Input("submit-button", "n_clicks"),
     State("username", "value"),
-    State("portfolio", "value")
+    State("first", "value"),
+    State("last", "value"),
+    State("email", "value"),
+    State("portfolio", "value"),
+    State("type", "value"),
+    State("market", "value"),
+    State("currency", "value"),
+    Input("submit-button", "n_clicks"),
 )
-def handle_submit(n_clicks, username, portfolio):
-    
-    if n_clicks is not None and n_clicks > 0:
-        
+def handle_submit(n_clicks, username, first, last, email, portfolio, type, market, currency):
+    if n_clicks is not None:
         with app.server.app_context():
-            user = Users.query.filter_by(username=username).first()
-            if user:
-                user_portfolio = Portfolios.query.filter_by(user_id=user.id, name=portfolio).first()
-                if user_portfolio:
-                    return False, {'username': username, 'portfolio': portfolio, 'portfolio_id' : user_portfolio.id} ,'/transactions'
-        
-            return True, None, None
-    
-    return False, None ,None
+            username,portfolio,portfolio_id = init_and_populate_db(username, first, last, email, portfolio, type, market, currency)
+            return False, {'username': username, 'portfolio': portfolio, 'portfolio_id': portfolio_id}, '/transactions'
+    return False, None, '/'
+
+@app.callback(Output('tab-content', 'children'),
+              Input('tabs', 'active_tab'))
+def render_tab_content(active_tab):
+    if active_tab == 'tab-upload':
+        return tab_upload_layout
+    elif active_tab == 'tab-manual':
+        return tab_manual_layout
+
 
 # Callback for the buy stock form
-@app.callback(
+@app.callback(Output('page-content', 'children',allow_duplicate=True),
     Output('buy-ticker-symbol', 'value'),
     Output('buy-name', 'value'),
     Output('buy-shares', 'value'),
@@ -198,7 +58,8 @@ def handle_submit(n_clicks, username, portfolio):
     State('buy-name', 'value'),
     State('buy-shares', 'value'),
     State('buy-price', 'value'),
-    State('store', 'data')
+    State('store', 'data'),
+    prevent_initial_call='True'
 )
 def handle_buy_stock(n_clicks, ticker_symbol, name, shares, price, store_data):
     if n_clicks is not None and n_clicks > 0:
@@ -207,12 +68,12 @@ def handle_buy_stock(n_clicks, ticker_symbol, name, shares, price, store_data):
             username,portfolio_id = store_data['username'],store_data['portfolio_id']
             if username:
                 buy_stock(ticker_symbol, name, shares, price, portfolio_id)
-            return '', '', '', ''
-    return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return layouts.page_2_layout,'', '', '', ''
+    return dash.no_update,dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
 
 # Callback for the sell stock form
-@app.callback(
+@app.callback(Output('page-content', 'children',allow_duplicate=True),
     Output('sell-ticker-symbol', 'value'),
     Output('sell-shares', 'value'),
     Output('sell-price', 'value'),
@@ -220,7 +81,8 @@ def handle_buy_stock(n_clicks, ticker_symbol, name, shares, price, store_data):
     State('sell-ticker-symbol', 'value'),
     State('sell-shares', 'value'),
     State('sell-price', 'value'),
-    State('store', 'data')
+    State('store', 'data'),
+    prevent_initial_call='True'
 )
 def handle_sell_stock(n_clicks, ticker_symbol, shares, price, store_data):
     if n_clicks is not None and n_clicks > 0:
@@ -229,12 +91,12 @@ def handle_sell_stock(n_clicks, ticker_symbol, shares, price, store_data):
             username,portfolio_id = store_data['username'],store_data['portfolio_id']
             if username:
                 sell_stock(ticker_symbol, shares, price, portfolio_id)
-            return '', '', ''
-    return dash.no_update, dash.no_update, dash.no_update
+            return layouts.page_2_layout,'', '', ''
+    return dash.no_update,dash.no_update, dash.no_update, dash.no_update
 
 
 # Callback for the add dividends form
-@app.callback(
+@app.callback(Output('page-content', 'children',allow_duplicate=True),
     Output('div-ticker-symbol', 'value'),
     Output('div-amount', 'value'),
     Output('div-ex-date', 'value'),
@@ -243,18 +105,68 @@ def handle_sell_stock(n_clicks, ticker_symbol, shares, price, store_data):
     State('div-ticker-symbol', 'value'),
     State('div-amount', 'value'),
     State('div-ex-date', 'value'),
-    State('div-payment-date', 'value')
+    State('div-payment-date', 'value'),
+    prevent_initial_call='True'
 )
 def handle_add_dividends(n_clicks, ticker_symbol, amount, ex_dividend_date, payment_date):
     if n_clicks is not None and n_clicks > 0:
         with app.server.app_context():
             stock = Stocks.query.filter_by(ticker_symbol=ticker_symbol).first()
-            print(ex_dividend_date)
             ex_dividend_date = datetime.strptime(ex_dividend_date, '%Y-%m-%d').date()
             payment_date = datetime.strptime(payment_date, '%Y-%m-%d').date()
             register_dividend(stock.id, amount, ex_dividend_date, payment_date)
-            return '', '', '', ''
-    return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return layouts.page_2_layout,'', '', '', ''
+    return dash.no_update,dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+###########################
+###########################
+####### Upload File #######
+###########################
+###########################
+
+@app.callback(Output('page-content', 'children',allow_duplicate=True),
+              Output('output-upload-file', 'children'),
+              Input('upload-file', 'contents'),
+              State('upload-file', 'filename'),
+              State('store','data'),
+                  prevent_initial_call=True)
+def handle_file_upload(contents, filename,data):
+    if contents is not None:
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+
+        if filename.endswith('.csv'):
+            df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+        elif filename.endswith('.xlsx'):
+            df_t = pd.read_excel(io.BytesIO(decoded),sheet_name='Transactions')
+            df_d = pd.read_excel(io.BytesIO(decoded),sheet_name='Dividends')
+
+        # Replace 'stock_id' column with 'ticker_symbol' and 'stock_name'
+        # df = df.rename(columns={'stock_id': 'ticker_symbol'})
+
+        # Here, you can process the DataFrame 'df' and insert the transactions into the database
+        with app.server.app_context():
+            portfolio_id = data['portfolio_id']
+            print(df_t)
+            for c,row in df_t.iterrows():
+                if row['type'] == 'buy':
+                    transaction = buy_stock(row['ticker_symbol'],row['name'],row['shares'],row['price'],portfolio_id)
+                    print(transaction)
+                else:
+                    print(row['ticker_symbol'])
+                    sell_stock(row['ticker_symbol'],row['shares'],row['price'],portfolio_id)
+            for c,row in df_d.iterrows():    
+                register_dividend(transaction.stock.id,row['amount'],row['ex_dividend_date'],row['payment_date'])
+
+        # table = dash_table.DataTable(
+        #     data=df.to_dict('records'),
+        #     columns=[{'name': i, 'id': i} for i in df.columns],
+        #     style_table={'overflowX': 'auto'})
+        # ]
+        print(filename)
+        return layouts.page_2_layout,f'File "{filename}" uploaded and processed successfully.'
+    else:
+        return dash.no_update,dash.no_update
 
 
 # Callback for updating stock details table and transactions summary
@@ -381,9 +293,32 @@ def update_stock_details(store_data):
         return stock_details, summary_children
 
 
-@app.server.teardown_request
-def teardown_request(exception=None):
-    db.session.remove()
+@app.callback(
+    Output("download", "data"),
+    Input("export-delete-button", "n_clicks"),
+    State("store", "data"),
+)
+def on_export_delete_button_click(n_clicks, store_data):
+    print(n_clicks)
+    if n_clicks is not None:
+        print('clicked')
+        portfolio_id = store_data["portfolio_id"]
+        transactions_df, dividends_df = export_transactions_and_delete_db(portfolio_id)
+        
+        df = pd.DataFrame()
+        # excel_filename = "stocks_data.xlsx"
+        excel_file = io.BytesIO()
+        with pd.ExcelWriter(excel_file) as writer:
+            transactions_df.to_excel(writer, sheet_name="Transactions", index=False)
+            dividends_df.to_excel(writer, sheet_name="Dividends", index=False)
+        
+        # Return the file as a base64-encoded string
+        return dict(content=base64.b64encode(excel_file.read()).decode(), 
+                    filename='stocks_data.xlsx')
+        
+        # return send_file(response["content"], response["filename"])
+        # return dcc.send_file(excel_filename, "my_stocks.xlsx")
+    return None
 
 if __name__ == "__main__":
     app.run_server(debug=True)
