@@ -23,7 +23,6 @@ def add_cash(portfolio_id, amount, currency):
 
 def register_dividend(ticker_symbol, amount, ex_dividend_date, payment_date):
     stock = Stocks.query.filter_by(ticker_symbol=ticker_symbol).first()
-    print(stock)
     dividend = Dividends(stock_id=stock.id, amount=amount, ex_dividend_date=ex_dividend_date, payment_date=payment_date)
     db.session.add(dividend)
     db.session.commit()
@@ -71,7 +70,6 @@ def buy_stock(ticker_symbol, name, shares, price, portfolio_id):
 
 def sell_stock(ticker_symbol, shares, price, portfolio_id):
 	stock = Stocks.query.filter_by(ticker_symbol=ticker_symbol, portfolio_id=portfolio_id).first()
-	print('Hi\n',stock,' What?')
 	if stock and stock.shares >= shares:
 		stock.shares -= shares
 		transaction = Transactions(type='sell', price=price, shares=shares, stock_id=stock.id)
