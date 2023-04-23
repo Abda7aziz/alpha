@@ -166,6 +166,8 @@ page_2_layout = dbc.Container([
                 {'name': 'Unrealized Gain/Loss', 'id': 'unrealized'},
             ],
             data=[],
+            row_selectable='multi',
+            selected_rows=[],
             style_table={'overflowX': 'auto'}
         ),
         width=12

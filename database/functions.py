@@ -1,4 +1,5 @@
 from database.models import db, Users, Portfolios, Stocks, Transactions, Dividends, Cash
+import yfinance as yf
 import pandas as pd
 
 def init_and_populate_db(username, first, last, email, portfolio, type, market, currency):
@@ -20,10 +21,12 @@ def add_cash(portfolio_id, amount, currency):
 	db.session.add(cash)
 	db.session.commit()
 
-def register_dividend(stock_id, amount, ex_dividend_date, payment_date):
-	dividend = Dividends(stock_id=stock_id, amount=amount, ex_dividend_date=ex_dividend_date, payment_date=payment_date)
-	db.session.add(dividend)
-	db.session.commit()
+def register_dividend(ticker_symbol, amount, ex_dividend_date, payment_date):
+    stock = Stocks.query.filter_by(ticker_symbol=ticker_symbol).first()
+    print(stock)
+    dividend = Dividends(stock_id=stock.id, amount=amount, ex_dividend_date=ex_dividend_date, payment_date=payment_date)
+    db.session.add(dividend)
+    db.session.commit()
 
 def create_portfolio(username, portfolio_name, portfolio_type=None, market=None, currency=None):
 	user = Users.query.filter_by(username=username).first()
@@ -94,6 +97,24 @@ def get_stock_dividends(stock_id):
 def get_portfolio_stocks(portfolio_id):
 	stocks = Stocks.query.filter_by(portfolio_id=portfolio_id).all()
 	return stocks
+
+def get_stock_details(ticker_symbol):
+    # Get the latest data for the given ticker symbol
+    print(f'{ticker_symbol}.SR')
+    ticker_data = yf.Ticker(f'{ticker_symbol}.SR')
+    latest_price = ticker_data.info["currentPrice"]
+    
+    # Get other details for the stock
+    name = ticker_data.info["shortName"]
+    # sector = ticker_data.info["sector"]
+    # industry = ticker_data.info["industry"]
+    
+    return {
+        "name": name,
+        # "sector": sector,
+        # "industry": industry,
+        "price": latest_price
+    }
 
 def export_transactions_and_delete_db(portfolio_id):
     # Get stocks for the portfolio
