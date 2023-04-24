@@ -6,8 +6,7 @@ class Users(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(255), nullable=False, unique=True)
     password = db.Column(db.String(255), nullable=False)
-    first_name = db.Column(db.String(255), nullable=False)
-    last_name = db.Column(db.String(255), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), nullable=False, unique=True)
     portfolios = db.relationship('Portfolios', backref='users', lazy=True)
 
@@ -26,6 +25,7 @@ class Stocks(db.Model):
     ticker_symbol = db.Column(db.String(10), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     shares = db.Column(db.Integer, nullable=False)
+    current_price = db.Column(db.Numeric(10,2), nullable =True)
     portfolio_id = db.Column(db.Integer, db.ForeignKey('portfolios.id'))
 
 class Transactions(db.Model):

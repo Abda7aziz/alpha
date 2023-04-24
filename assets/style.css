@@ -21,3 +21,13 @@
 .summary-row {
     margin-bottom: 20px;
 }
+
+*[data-dash-is-loading="true"]{
+    visibility: hidden;
+}
+*[data-dash-is-loading="true"]::before{
+    content: "Loading...";
+    display: inline-block;
+    color: rgba(0, 248, 182, 0.639);
+    visibility: visible;
+}

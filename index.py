@@ -3,6 +3,7 @@ from dash import html, dcc
 from app import app
 import layouts
 import callbacks
+import dash
 
 server = app.server  # create the application instance
 
@@ -17,8 +18,10 @@ app.layout = html.Div([
 def display_page(pathname):
     if pathname == '/transactions':
         return layouts.page_2_layout
+    elif pathname == '/register':
+        return layouts.registration_layout
     else:
-        return layouts.page_1_layout
+        return layouts.login_layout
 
 if __name__ == "__main__":
     app.run_server(debug=True)

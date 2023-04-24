@@ -1,149 +1,96 @@
 import dash_bootstrap_components as dbc
 from dash import html, dcc, dash_table
 
-
-page_1_layout = dbc.Container([
-    dbc.Row(
-        dbc.Col(
+# Create the login and registration form
+login_form = dbc.Col(
+    [
+        dbc.Card(
             [
-                dbc.Card(
-                    [
-                        dbc.CardBody(
-                            [
-                                html.H1("Stock Portfolio Manager", className="display-4 text-center mb-4"),
-                                html.P(
-                                    "Enter your personal and portfolio information:",
-                                    className="lead text-center mb-4"
-                                ),
-                                dbc.Form(
-                                    [
-                                        dbc.Col(
-                                            [
-                                                dbc.Label("Username", className="mr-2"),
-                                                dbc.Input(
-                                                    id="username",
-                                                    type="text",
-                                                    placeholder="Enter username"
-                                                )
-                                            ],
-                                            
-                                        ),
-                                        dbc.Col(
-                                            [
-                                                dbc.Label("First Name", className="mr-2"),
-                                                dbc.Input(
-                                                    id="first",
-                                                    type="text",
-                                                    placeholder="Enter first name"
-                                                )
-                                            ],
-                                            
-                                        ),
-                                        dbc.Col(
-                                            [
-                                                dbc.Label("Last Name", className="mr-2"),
-                                                dbc.Input(
-                                                    id="last",
-                                                    type="text",
-                                                    placeholder="Enter last name"
-                                                )
-                                            ],
-                                            
-                                        ),
-                                        dbc.Col(
-                                            [
-                                                dbc.Label("Email", className="mr-2"),
-                                                dbc.Input(
-                                                    id="email",
-                                                    type="email",
-                                                    placeholder="Enter email"
-                                                )
-                                            ],
-                                            
-                                        ),
-                                        dbc.Col(
-                                            [
-                                                dbc.Label("Portfolio Name", className="mr-2"),
-                                                dbc.Input(
-                                                    id="portfolio",
-                                                    type="text",
-                                                    placeholder="Enter portfolio name"
-                                                )
-                                            ],
-                                            
-                                        ),
-                                        dbc.Col(
-                                            [
-                                                dbc.Label("Portfolio Type", className="mr-2"),
-                                                dbc.Input(
-                                                    id="type",
-                                                    type="text",
-                                                    placeholder="type"
-                                                )
-                                            ],
-                                            
-                                        ),
-                                        dbc.Col(
-                                            [
-                                                dbc.Label("Market", className="mr-2"),
-                                                dbc.Input(
-                                                    id="market",
-                                                    type="text",
-                                                    placeholder="market"
-                                                )
-                                            ],
-                                            
-                                        ),
-                                        dbc.Col(
-                                            [
-                                                dbc.Label("Portfolio Currency", className="mr-2"),
-                                                dbc.Input(
-                                                    id="currency",
-                                                    type="text",
-                                                    placeholder="currency"
-                                                )
-                                            ],
-                                            
-                                        ),
-                                        dbc.Button(
-                                            "Submit",
-                                            id="submit-button",
-                                            color="primary",
-                                            className="mt-3",
-                                        ),
-                                    ],
-                                ),
-                            ],
-                            
-                        )
-                    ]
-                )
+                dbc.Label("Username", className="mr-2"),
+                dbc.Input(id='username',type="text", placeholder="Enter username"),
             ],
-            width={"size": 10, "offset": 1},
-        )
-    ),
-    dbc.Row(
-        dbc.Col(
-            dbc.Alert(
-                "Error: Username or Portfolio not found.",
-                id="error-alert",
-                color="danger",
-                is_open=False,
-            ),
-            width=12,
-        )
-    ),
-], fluid=True)
+        ),
+        dbc.Card(
+            [
+                dbc.Label("Password", className="mr-2"),
+                dbc.Input(id='password',type="password", placeholder="Enter password"),
+            ],
+        ),
+        dbc.Button("Login",id='login-submit', color="primary", className="mr-2"),
+        dbc.Button("Register",id='register-page', color="secondary",href='/register'),
+    ],
+    # width=5
+    # inline=True,
+)
 
+registration_form = dbc.Col(
+    [
+        dbc.Card(
+            [
+                dbc.Label("Username", className="mr-2"),
+                dbc.Input(id='username-r',type="text", placeholder="Enter username",required=True),
+            ]
+        ),
+        dbc.Card(
+            [
+                dbc.Label("Email", className="mr-2"),
+                dbc.Input(id='email',type="email", placeholder="Enter email",required=True),
+            ]
+        ),
+        dbc.Card(
+            [
+                dbc.Label("Name", className="mr-2"),
+                dbc.Input(id='name',type="text", placeholder="Enter your name",required=True),
+            ]
+        ),
+        dbc.Card(
+            [
+                dbc.Label("Password", className="mr-2"),
+                dbc.Input(id='password-r',type="password", placeholder="Enter password",required=True),
+            ]
+        ),
+        dbc.Card(
+            [
+                dbc.Label("Confirm Password", className="mr-2"),
+                dbc.Input(id='confirm',type="password", placeholder="Enter password again",required=True),
+            ]
+        ),
+        dbc.Button("Submit",id='register-submit', color="primary", className="mr-2"),
+        dbc.Button("Login Page!", href="/")
+    ],
+    # width=5
+)
+
+# Create the layout
+login_layout = html.Div(
+    [
+        html.H1("Login"),
+        html.Div(id='login-status'),
+        login_form,
+    ],
+    className="mx-auto mt-5 text-center",
+    style={"max-width": "600px"}
+    # className=""
+)
+
+registration_layout = html.Div(
+    [
+        html.H1("Register"),
+        html.Div(id='registration-status'),
+        registration_form,
+    ],
+    className="mx-auto mt-5 text-center",
+    style={"max-width": "600px"}
+)
 
 page_2_layout = dbc.Container([
     dbc.Tabs(
         [
-            dbc.Tab(label='Upload Transactions', tab_id='tab-upload'),
-            dbc.Tab(label='Enter Transactions Manually', tab_id='tab-manual')
+            dbc.Tab(label='Enter Transactions Manually', tab_id='tab-manual'),
+            dbc.Tab(label='Upload Transactions', tab_id='tab-upload')
         ],
         id='tabs',
-        active_tab='tab-upload',
+        active_tab='tab-manual',
         className="mb-3"
     ),
     dbc.Container(id='tab-content', fluid=True),
@@ -159,20 +106,22 @@ page_2_layout = dbc.Container([
                 {'name': 'Stock Name', 'id': 'name'},
                 {'name': 'Ticker Symbol', 'id': 'ticker_symbol'},
                 {'name': 'Shares', 'id': 'shares'},
-                {'name': 'Price', 'id': 'price'},
+                {'name': 'Last Price', 'id': 'price'},
                 {'name': 'Average', 'id': 'average'},
                 {'name': 'Buy/Sell Average', 'id': 'buy_sell_average'},
                 {'name': 'Buy/Sell/Dividends Average', 'id': 'buy_sell__div_average'},
-                {'name': 'Unrealized Gain/Loss', 'id': 'unrealized'},
+                {'name': 'Unrealized Gain/Loss', 'id': 'unrealized','hideable':True},
             ],
             data=[],
+            cell_selectable=False,
             row_selectable='multi',
-            selected_rows=[],
             style_table={'overflowX': 'auto'}
         ),
         width=12
     ),
-    dcc.Store('upload-store',storage_type='local')
+    html.Button("Clear Selection", id="clear"),
+    dcc.Store('upload-store',storage_type='local'),
+    dcc.Download(id="download"),
 ]),
 
 dbc.Row([
@@ -219,7 +168,7 @@ tab_upload_layout = dbc.Row([
             ),
         ],
         id='instructions',
-        color="info",
+        color="dark",
         dismissable=True,
     ),
         dcc.Upload(
@@ -241,7 +190,6 @@ tab_upload_layout = dbc.Row([
             multiple=False
         ),
         html.Div(html.H5(id='output-upload-file')),
-        dcc.Download(id="download"),
             ])
         ])
 ])
@@ -260,56 +208,57 @@ tab_manual_layout = dbc.Row([
                 dbc.Form([
                     # Buy Stock Form
                     dbc.Col([
-                        dbc.Label('Buy Stock'),
-                        dbc.Input(id='buy-ticker-symbol', type='text', placeholder='Ticker Symbol'),
-                        dbc.Input(id='buy-name', type='text', placeholder='Stock Name'),
-                        dbc.Input(id='buy-shares', type='number', placeholder='Shares', step='any'),
-                        dbc.Input(id='buy-price', type='number', placeholder='Price', step='any'),
-                        dbc.Button('Submit', id='buy-submit-button', color='primary', n_clicks=0)
+                        dbc.Label('Buy/Sell Transaction'),
+                        dcc.RadioItems(['Buy','Sell'],'Buy',id='buy-sell',inline=True),
+                        dbc.Input(id='ticker-symbol', type='text', placeholder='Stock Ticker'),
+                        dbc.Input(id='shares', type='number', placeholder='Shares', step='any'),
+                        dbc.Input(id='price', type='number', placeholder='Price', step='any'),
+                        dbc.Button('Submit', id='trans-submit-button', color='primary', n_clicks=0)
                     ])
                 ]),
                 width=6
             ),   
-            dbc.Col(
-                dbc.Form([
-                    # Sell Stock Form
-                    dbc.Col([
-                        dbc.Label('Sell Stock'),
-                        dbc.Input(id='sell-ticker-symbol', type='text', placeholder='Ticker Symbol'),
-                        dbc.Input(id='sell-shares', type='number', placeholder='Shares', step='any'),
-                        dbc.Input(id='sell-price', type='number', placeholder='Price', step='any'),
-                        dbc.Button('Submit', id='sell-submit-button', color='primary', n_clicks=0)
-                    ])
-                ]),
-                width=6
-            ),
+            # dbc.Col(
+            #     dbc.Form([
+            #         # Sell Stock Form
+            #         dbc.Col([
+            #             dbc.Label('Sell Stock'),
+            #             dbc.Input(id='sell-ticker-symbol', type='text', placeholder='Ticker Symbol'),
+            #             dbc.Input(id='sell-shares', type='number', placeholder='Shares', step='any'),
+            #             dbc.Input(id='sell-price', type='number', placeholder='Price', step='any'),
+            #             dbc.Button('Submit', id='sell-submit-button', color='primary', n_clicks=0)
+            #         ])
+            #     ]),
+            #     width=6
+            # ),
             dbc.Col(
                 dbc.Form([
                     # Register Dividends Form
                     dbc.Col([
-                        dbc.Label('Register Dividends'),
+                        dbc.Label('Register Dividends',style={'margin-buttom':'30px'}),
                         dbc.Input(id='div-ticker-symbol', type='text', placeholder='Ticker Symbol'),
                         dbc.Input(id='div-amount', type='number', placeholder='Amount', step='any'),
-                        dbc.Input(id='div-ex-date', type='date', placeholder='Ex-Dividend Date'),
+                        dbc.Input(id='div-ex-date', type='date',value='', placeholder='Ex-Dividend Date'),
                         dbc.Input(id='div-payment-date', type='date', placeholder='Payment Date'),
-                        dbc.Button('Submit', id='div-submit-button', color='primary', n_clicks=0)
+                        dbc.Button('Submit', id='div-submit-button', color='primary', n_clicks=0)   
+                                 
                     ])
                 ]),
                 width=6
             ),
-            dbc.Col(
-                dbc.Form([
-                    # Add Cash Form
-                    dbc.Col([
-                        dbc.Label('Add Cash'),
-                        dbc.Input(id='add-portfoilio-name', type='text', placeholder='Portfolio Name', disabled=True),
-                        dbc.Input(id='add-cash-amount', type='number', placeholder='Amount', step='any', disabled=True),
-                        dbc.Input(id='add-cash-currency', type='text', placeholder='Currency',disabled=True),
-                        dbc.Button('Submit', id='add-cash-submit', color='primary', n_clicks=0, disabled=True)
-                    ])
-                ]),
-                width=6
-            )
+            # dbc.Col(
+            #     dbc.Form([
+            #         # Add Cash Form
+            #         dbc.Col([
+            #             dbc.Label('Add Cash'),
+            #             dbc.Input(id='add-portfoilio-name', type='text', placeholder='Portfolio Name', disabled=True),
+            #             dbc.Input(id='add-cash-amount', type='number', placeholder='Amount', step='any', disabled=True),
+            #             dbc.Input(id='add-cash-currency', type='text', placeholder='Currency',disabled=True),
+            #             dbc.Button('Submit', id='add-cash-submit', color='primary', n_clicks=0, disabled=True)
+            #         ])
+            #     ]),
+            #     width=6,
+            # )
         ])
     ])
 ])

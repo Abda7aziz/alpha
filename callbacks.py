@@ -1,11 +1,12 @@
-from database.functions import buy_stock,sell_stock,register_dividend,get_portfolio_stocks,get_stock_dividends,get_stock_transactions, init_and_populate_db, get_stock_details, export_transactions_and_delete_db
+from database.functions import validate_creds,register_user,validate_email, buy_stock,sell_stock,register_dividend,get_portfolio_stocks,\
+    get_stock_dividends,get_stock_transactions, get_stock_details, export_transactions_and_delete_db
 from layouts import tab_upload_layout, tab_manual_layout
-from database.models import Stocks
+from database.models import Stocks,Users
 from dash.dependencies import Input, Output, State
 from flask import send_file
 import dash_bootstrap_components as dbc
 from datetime import datetime
-from dash import dcc
+from dash import html,dcc,ctx
 import pandas as pd
 import layouts
 import decimal
@@ -17,27 +18,49 @@ import io
 
 from app import app
 
+@app.callback(Output('url', 'pathname'),
+              Output('store', 'data'),
+              Output('login-status','children'),
+              Input('login-submit','n_clicks'),
+              State('username', 'value'),
+              State('password', 'value'))
+def authentication(login,username,password):
+    if login is not None:
+        if validate_creds(username,password):
+            return '/transactions',{'username':username,'portfolio_id':1},'Success'
+        else:
+            return dash.no_update,None,html.P('Couldnt validate login credentials',style={'color':'red'})
+    return dash.no_update,None,None
 
-@app.callback(
-    Output("error-alert", "is_open"),
-    Output('store', 'data'),
-    Output('url', 'pathname'),
-    State("username", "value"),
-    State("first", "value"),
-    State("last", "value"),
-    State("email", "value"),
-    State("portfolio", "value"),
-    State("type", "value"),
-    State("market", "value"),
-    State("currency", "value"),
-    Input("submit-button", "n_clicks"),
-)
-def handle_submit(n_clicks, username, first, last, email, portfolio, type, market, currency):
+@app.callback(Output("url", "pathname",allow_duplicate=True),
+              Output("registration-status", "children"),
+              State("username-r", "value"),
+              State("email", "value"),
+              State("name", "value"),
+              State("password-r", "value"),
+              State("confirm", "value"),
+              Input("register-submit", "n_clicks"),
+              prevent_initial_call=True)
+def register(username_, email_, name, password, confirm, n_clicks):
     if n_clicks is not None:
-        with app.server.app_context():
-            username,portfolio,portfolio_id = init_and_populate_db(username, first, last, email, portfolio, type, market, currency)
-            return False, {'username': username, 'portfolio': portfolio, 'portfolio_id': portfolio_id}, '/transactions'
-    return False, None, '/'
+        if not username_ or not email_ or not name or not password or not confirm:
+            return dash.no_update, html.P('please fill in the form',style={'color':'red'})
+        
+        if not validate_email(email_):
+            return dash.no_update, html.P('please enter a valid email',style={'color':'red'})
+
+        if password != confirm:
+            return dash.no_update, html.P('Passwords must match',style={'color':'red'})
+
+        # check if user exists
+        user_exists = Users.query.filter((Users.username == username_) | (Users.email == email_)).first()
+        if user_exists:
+            return '/register', html.P('Username or Email already exist', style={'color': 'red'})
+
+        register_user(username_,email_, name, password)
+        return dash.no_update, html.P("Registration successful! Manually Go back to the Login page",style={'color':'green'})
+    return dash.no_update, None
+
 
 @app.callback(Output('tab-content', 'children'),
               Input('tabs', 'active_tab'))
@@ -48,53 +71,34 @@ def render_tab_content(active_tab):
         return tab_manual_layout
 
 
+
+
 # Callback for the buy stock form
 @app.callback(Output('page-content', 'children',allow_duplicate=True),
-    Output('buy-ticker-symbol', 'value'),
-    Output('buy-name', 'value'),
-    Output('buy-shares', 'value'),
-    Output('buy-price', 'value'),
-    Input('buy-submit-button', 'n_clicks'),
-    State('buy-ticker-symbol', 'value'),
-    State('buy-name', 'value'),
-    State('buy-shares', 'value'),
-    State('buy-price', 'value'),
+    Output('buy-sell', 'value'),
+    Output('ticker-symbol','value'),
+    Output('shares', 'value'),
+    Output('price', 'value'),
+    State('buy-sell','value'),
+    State('ticker-symbol', 'value'),
+    State('shares', 'value'),
+    State('price', 'value'),
     State('store', 'data'),
+    Input('trans-submit-button', 'n_clicks'),
     prevent_initial_call='True'
 )
-def handle_buy_stock(n_clicks, ticker_symbol, name, shares, price, store_data):
+def handle_stock_transaction(buy_sell, ticker_symbol, shares, price, store_data, n_clicks):
     if n_clicks is not None and n_clicks > 0:
         with app.server.app_context():
             # Get the portfolio_id for the given username and portfolio_name
             username,portfolio_id = store_data['username'],store_data['portfolio_id']
-            if username:
-                buy_stock(ticker_symbol, name, shares, price, portfolio_id)
-            return layouts.page_2_layout,'', '', '', ''
-    return dash.no_update,dash.no_update, dash.no_update, dash.no_update, dash.no_update
-
-
-# Callback for the sell stock form
-@app.callback(Output('page-content', 'children',allow_duplicate=True),
-    Output('sell-ticker-symbol', 'value'),
-    Output('sell-shares', 'value'),
-    Output('sell-price', 'value'),
-    Input('sell-submit-button', 'n_clicks'),
-    State('sell-ticker-symbol', 'value'),
-    State('sell-shares', 'value'),
-    State('sell-price', 'value'),
-    State('store', 'data'),
-    prevent_initial_call='True'
-)
-def handle_sell_stock(n_clicks, ticker_symbol, shares, price, store_data):
-    if n_clicks is not None and n_clicks > 0:
-        with app.server.app_context():
-            # Get the portfolio_id for the given username and portfolio_name
-            username,portfolio_id = store_data['username'],store_data['portfolio_id']
-            if username:
+            print(buy_sell)
+            if buy_sell == 'Buy':
+                buy_stock(ticker_symbol, shares, price, portfolio_id)
+            else:
                 sell_stock(ticker_symbol, shares, price, portfolio_id)
-            return layouts.page_2_layout,'', '', ''
-    return dash.no_update,dash.no_update, dash.no_update, dash.no_update
-
+            return layouts.page_2_layout,'', '', '',''
+    return dash.no_update,dash.no_update,dash.no_update, dash.no_update, dash.no_update
 
 # Callback for the add dividends form
 @app.callback(Output('page-content', 'children',allow_duplicate=True),
@@ -125,8 +129,9 @@ def handle_add_dividends(n_clicks, ticker_symbol, amount, ex_dividend_date, paym
 ###########################
 ###########################
 
-@app.callback(Output('page-content', 'children',allow_duplicate=True),
+@app.callback(Output('url', 'pathname',allow_duplicate=True),
               Output('output-upload-file', 'children'),
+              Output('instructions','is_open'),
               Input('upload-file', 'contents'),
               State('upload-file', 'filename'),
               State('store','data'),
@@ -151,7 +156,7 @@ def handle_file_upload(contents, filename,data):
             for c,row in df_t.iterrows():
                 # print(row)
                 if row['type'] == 'buy':
-                    transaction = buy_stock(row['ticker_symbol'],row['name'],row['shares'],row['price'],portfolio_id)
+                    transaction = buy_stock(row['ticker_symbol'],row['shares'],row['price'],portfolio_id)
                     # print(transaction)
                 else:
                     # print(row['ticker_symbol'])
@@ -164,34 +169,31 @@ def handle_file_upload(contents, filename,data):
         #     columns=[{'name': i, 'id': i} for i in df.columns],
         #     style_table={'overflowX': 'auto'})
         # ]
-        return layouts.page_2_layout,f'File "{filename}" uploaded and processed successfully.'
+        return '/transactions',f'File "{filename}" uploaded and processed successfully.',False
     else:
-        return dash.no_update,dash.no_update
+        return dash.no_update,dash.no_update,True
 
 
 # Callback for updating stock details table and transactions summary
 @app.callback(
     Output('stock-details-table', 'data'),
+    Output("stock-details-table", "active_cell"),
     Output('transactions-summary', 'children'),
     Input('store', 'data'),
-    Input('stock-details-table', 'active_cell')
+    Input('stock-details-table', 'selected_rows'),
+    Input("clear", "n_clicks")
 )
-def update_stock_details(store_data,active_cell):
+def update_stock_details(store_data,selected_rows,clear):
         
     # Check if username and portfolio name data are not empty
     username,portfolio_id = store_data['username'],store_data['portfolio_id']
     if not username or not portfolio_id:
-        return [], None
-
+        return [], None,[]
     with app.server.app_context():
 
         # Get stocks for the given portfolio
         stocks = get_portfolio_stocks(portfolio_id)
-        
-        row_index = active_cell['row'] if active_cell else None
 
-                
-                
         # Calculate and update stock details
         stock_details = []
         summary_details = []
@@ -228,10 +230,8 @@ def update_stock_details(store_data,active_cell):
             buy_sell_avg = (weighted_buy_sum - weighted_sell_sum) / (buy_shares - sell_shares) if buy_shares - sell_shares > 0 else 0
             buy_sell_dividends_avg = (weighted_buy_sum - weighted_sell_sum - dividends_sum) / (buy_shares - sell_shares) if buy_shares - sell_shares > 0 else 0
             # Calculate unrealized gain/loss (assuming you have the current price of the stock)
-            current_price = get_stock_details(str(stock.ticker_symbol))['price']  
-            current_price = current_price
-            current_price = current_price
-            unrealized_gain_loss = (current_price - float(buy_avg)) * (float(buy_shares) - float(sell_shares))
+            current_price = stock.current_price
+            unrealized_gain_loss = (current_price - buy_avg) * (buy_shares - sell_shares)
 
             # Append the calculated values to the stock_data list
             stock_details.append({
@@ -256,17 +256,16 @@ def update_stock_details(store_data,active_cell):
         # Calculate transactions summary (gained sum from selling and dividends)
             summary_details.append({
                 'name':stock.name,
-                'sell gains':float(sell_gains),
-                'dividends sum':float(dividends_sum),
+                'sell gains':sell_gains,
+                'dividends sum':dividends_sum,
             })
         if len(stock_details) == 0:
-            return stock_details,summary_details
-        
-        if active_cell:
-            index = active_cell['row']
+            return stock_details,None,summary_details
+        if selected_rows:
+            index = selected_rows
             # print(summary_details[index])
-            sell_gains_ = summary_details[index]['sell gains']
-            dividends_sum_ = summary_details[index]['dividends sum']
+            sell_gains_ = sum([summary_details[s]['sell gains'] for s in index])
+            dividends_sum_ = sum([summary_details[s]['dividends sum'] for s in index])
         else:
             # print(summary_details)
             sell_gains_ = sum([s['sell gains'] for s in summary_details])
@@ -305,9 +304,10 @@ def update_stock_details(store_data,active_cell):
                 className="summary-row",
             ),
         ]
-
+        if clear is not None:
+            return stock_details, None, summary_children
         # Return the stock details data and transactions summary components
-        return stock_details, summary_children
+        return stock_details, None, summary_children
 
 
 @app.callback(
@@ -316,23 +316,23 @@ def update_stock_details(store_data,active_cell):
     State("store", "data"),
 )
 def on_export_delete_button_click(n_clicks, store_data):
+    print(n_clicks)
     if n_clicks is not None:
-        portfolio_id = store_data["portfolio_id"]
-        transactions_df, dividends_df = export_transactions_and_delete_db(portfolio_id)
+        username = store_data["username"]
+        transactions_df, dividends_df = export_transactions_and_delete_db(1)
         
         df = pd.DataFrame()
-        # excel_filename = "stocks_data.xlsx"
+        
+        # use ExcelWrite to write two sheets xlsx file from the dataframe
         excel_file = io.BytesIO()
         with pd.ExcelWriter(excel_file) as writer:
             transactions_df.to_excel(writer, sheet_name="Transactions", index=False)
             dividends_df.to_excel(writer, sheet_name="Dividends", index=False)
-        
-        # Return the file as a base64-encoded string
-        return dict(content=base64.b64encode(excel_file.read()).decode(), 
-                    filename='stocks_data.xlsx')
-        
-        # return send_file(response["content"], response["filename"])
-        # return dcc.send_file(excel_filename, "my_stocks.xlsx")
+        excel_file.seek(0)
+
+        #  send the file contents as a byte string with the specified MIME
+        return dcc.send_bytes(excel_file.read(), filename='stocks_data.xlsx',type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    
     return None
 
 if __name__ == "__main__":
